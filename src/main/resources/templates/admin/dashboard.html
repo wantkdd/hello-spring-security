@@ -29,6 +29,7 @@
                 <li class="nav-item"><a class="nav-link" th:href="@{/products/add}">상품 등록</a></li>
                 <li class="nav-item"><a class="nav-link active" th:href="@{/admin/dashboard}">관리자</a></li>
             </ul>
+            <a th:href="@{/user/password}" class="btn btn-outline-light btn-sm px-3 me-2">비밀번호 변경</a>
             <form th:action="@{/logout}" method="post" class="d-flex">
                 <button class="btn btn-outline-light btn-sm px-3">로그아웃</button>
             </form>
@@ -94,6 +95,8 @@
         </div>
     </div>
 </div>
+
+<div th:replace="~{fragments/common :: practice-footer}"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
