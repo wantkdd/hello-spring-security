@@ -16,6 +16,11 @@ public class AdminController {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
+    public AdminController(UserRepository userRepository, ProductRepository productRepository) {
+        this.userRepository = userRepository;
+        this.productRepository = productRepository;
+    }
+
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         model.addAttribute("pageTitle", "관리자 대시보드");
