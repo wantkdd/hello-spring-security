@@ -15,6 +15,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -53,14 +56,68 @@ class ProductControllerTest {
     @WithMockUser(roles = "USER")
     @DisplayName("인증된 사용자 - 상품 목록 조회 성공 (200)")
     void listProducts_authenticated_returns200() throws Exception {
-        given(productService.findAll()).willReturn(List.of(
+        given(productService.getProducts(any(Pageable.class))).willReturn(new PageImpl<>(List.of(
             new Product("Spring Boot 4 교재", 35000, "실습서", 50)
-        ));
+        )));
 
         mockMvc.perform(get("/products"))
             .andExpect(status().isOk())
             .andExpect(view().name("products/list"))
-            .andExpect(model().attributeExists("products"));
+            .andExpect(model().attributeExists("productPage"));
+    }
+
+
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("인증된 사용자 - 키워드 검색 시 검색 서비스 호출")
+    void searchProducts_authenticated_returns200() throws Exception {
+        given(productService.searchProducts(eq("삼성전자"), any(Pageable.class))).willReturn(new PageImpl<>(List.of(
+            new Product("삼성전자 갤럭시 S25", 1290000, "스마트폰", 100)
+        )));
+
+        mockMvc.perform(get("/products").param("keyword", "삼성전자"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/list"))
+            .andExpect(model().attributeExists("productPage"))
+            .andExpect(model().attribute("keyword", "삼성전자"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN - 상품 수정 폼 조회 성공")
+    void editForm_admin_returns200() throws Exception {
+        given(productService.findById(1L)).willReturn(new Product("테스트 상품", 15000, "설명", 10));
+
+        mockMvc.perform(get("/products/1/edit"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/edit"))
+            .andExpect(model().attributeExists("productDto"))
+            .andExpect(model().attributeExists("productId"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("일반 USER - 상품 수정 폼 접근 시 403")
+    void editForm_user_returns403() throws Exception {
+        mockMvc.perform(get("/products/1/edit"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN - 상품 수정 POST 후 목록으로 리다이렉트")
+    void editProduct_admin_redirectsToList() throws Exception {
+        given(productService.updateProduct(eq(1L), any())).willReturn(new Product("수정 상품", 20000, "설명", 5));
+
+        mockMvc.perform(post("/products/1/edit")
+                .with(csrf())
+                .param("name", "수정 상품")
+                .param("price", "20000")
+                .param("description", "수정 설명")
+                .param("stock", "5"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/products"));
     }
 
     @Test

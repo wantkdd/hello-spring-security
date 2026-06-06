@@ -1,11 +1,18 @@
 package kr.ac.hansung.controller;
 
+import jakarta.validation.Valid;
 import kr.ac.hansung.dto.ProductDto;
+import kr.ac.hansung.entity.Product;
 import kr.ac.hansung.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/products")
@@ -14,9 +21,27 @@ public class ProductController {
 
     private final ProductService productService;
 
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
+
     @GetMapping
-    public String list(Model model) {
-        model.addAttribute("products", productService.findAll());
+    public String list(@RequestParam(required = false) String keyword,
+                       @RequestParam(defaultValue = "0") int page,
+                       @RequestParam(defaultValue = "5") int size,
+                       Model model) {
+        int pageSize = size > 0 ? size : 5;
+        int pageNumber = Math.max(page, 0);
+        String normalizedKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+
+        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by("id"));
+        Page<Product> productPage = normalizedKeyword == null
+            ? productService.getProducts(pageRequest)
+            : productService.searchProducts(normalizedKeyword, pageRequest);
+
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("keyword", normalizedKeyword);
+        model.addAttribute("size", pageSize);
         return "products/list";
     }
 
@@ -33,8 +58,40 @@ public class ProductController {
     }
 
     @PostMapping
-    public String save(@ModelAttribute ProductDto dto) {
+    public String save(@Valid @ModelAttribute("product") ProductDto dto,
+                       BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "products/add";
+        }
         productService.save(dto);
+        return "redirect:/products";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String editProductForm(@PathVariable Long id, Model model) {
+        Product product = productService.findById(id);
+        ProductDto dto = new ProductDto();
+        dto.setName(product.getName());
+        dto.setPrice(product.getPrice());
+        dto.setStock(product.getStock());
+        dto.setDescription(product.getDescription());
+        model.addAttribute("productDto", dto);
+        model.addAttribute("productId", id);
+        return "products/edit";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String editProduct(@PathVariable Long id,
+                              @Valid @ModelAttribute("productDto") ProductDto productDto,
+                              BindingResult bindingResult,
+                              Model model,
+                              RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("productId", id);
+            return "products/edit";
+        }
+        productService.updateProduct(id, productDto);
+        redirectAttributes.addFlashAttribute("successMessage", "상품이 수정되었습니다.");
         return "redirect:/products";
     }
 
