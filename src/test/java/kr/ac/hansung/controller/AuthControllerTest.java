@@ -90,6 +90,16 @@ class AuthControllerTest {
     }
 
     @Test
+    @org.springframework.security.test.context.support.WithMockUser(username = "admin@hansung.ac.kr", roles = "USER")
+    @DisplayName("GET /user/password - 로그인 사용자는 비밀번호 변경 폼 접근 가능")
+    void passwordForm_authenticated_returns200() throws Exception {
+        mockMvc.perform(get("/user/password"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("user/password"))
+            .andExpect(model().attributeExists("passwordChangeDto"));
+    }
+
+    @Test
     @DisplayName("POST /signup - CSRF 토큰 없으면 403 (Spring Security 기본 보호)")
     void signupProcess_noCsrf_returns403() throws Exception {
         mockMvc.perform(post("/signup")
