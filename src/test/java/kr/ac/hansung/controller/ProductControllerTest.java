@@ -16,10 +16,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -81,6 +83,20 @@ class ProductControllerTest {
             .andExpect(view().name("products/list"))
             .andExpect(model().attributeExists("productPage"))
             .andExpect(model().attribute("keyword", "삼성전자"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("인증된 사용자 - 검색 결과가 없으면 안내 문구 표시")
+    void searchProducts_emptyResult_showsEmptyMessage() throws Exception {
+        given(productService.searchProducts(eq("zzzz"), any(Pageable.class)))
+            .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 5), 0));
+
+        mockMvc.perform(get("/products").param("keyword", "zzzz"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/list"))
+            .andExpect(model().attribute("keyword", "zzzz"))
+            .andExpect(content().string(containsString("검색 결과가 없습니다.")));
     }
 
     @Test
